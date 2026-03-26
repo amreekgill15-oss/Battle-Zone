@@ -1,0 +1,691 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Battle Zone – Tournament App</title>
+<link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@400;500;600;700&family=Orbitron:wght@400;700;900&family=Share+Tech+Mono&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --neon: #00f5ff;
+    --neon2: #ff003c;
+    --neon3: #ffe600;
+    --bg: #04060d;
+    --bg2: #080c18;
+    --card: #0c1220;
+    --border: rgba(0,245,255,0.18);
+    --text: #e0eaff;
+    --muted: #5a7090;
+  }
+
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  html { scroll-behavior: smooth; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Rajdhani', sans-serif;
+    overflow-x: hidden;
+    cursor: crosshair;
+  }
+
+  /* ── SCANLINE OVERLAY ── */
+  body::before {
+    content: '';
+    position: fixed; inset: 0; z-index: 9999;
+    pointer-events: none;
+    background: repeating-linear-gradient(
+      0deg,
+      transparent,
+      transparent 2px,
+      rgba(0,0,0,0.07) 2px,
+      rgba(0,0,0,0.07) 4px
+    );
+  }
+
+  /* ── GRID BG ── */
+  .grid-bg {
+    position: fixed; inset: 0; z-index: 0; pointer-events: none;
+    background-image:
+      linear-gradient(rgba(0,245,255,0.04) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(0,245,255,0.04) 1px, transparent 1px);
+    background-size: 60px 60px;
+    animation: gridMove 20s linear infinite;
+  }
+  @keyframes gridMove {
+    0% { background-position: 0 0; }
+    100% { background-position: 60px 60px; }
+  }
+
+  /* ── NAV ── */
+  nav {
+    position: fixed; top: 0; left: 0; right: 0; z-index: 100;
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 18px 40px;
+    background: rgba(4,6,13,0.85);
+    backdrop-filter: blur(12px);
+    border-bottom: 1px solid var(--border);
+  }
+  .nav-logo {
+    font-family: 'Orbitron', monospace;
+    font-weight: 900; font-size: 1.3rem;
+    color: var(--neon);
+    text-shadow: 0 0 18px var(--neon), 0 0 40px rgba(0,245,255,0.3);
+    letter-spacing: 3px;
+  }
+  .nav-logo span { color: var(--neon2); text-shadow: 0 0 18px var(--neon2); }
+  .nav-links { display: flex; gap: 28px; list-style: none; }
+  .nav-links a {
+    color: var(--muted); font-size: 0.95rem; font-weight: 600;
+    text-decoration: none; letter-spacing: 2px; text-transform: uppercase;
+    transition: color 0.2s;
+  }
+  .nav-links a:hover { color: var(--neon); }
+
+  /* ── HERO ── */
+  .hero {
+    position: relative; z-index: 1;
+    min-height: 100vh;
+    display: flex; flex-direction: column;
+    align-items: center; justify-content: center;
+    text-align: center;
+    padding: 120px 20px 80px;
+    overflow: hidden;
+  }
+
+  /* animated corner brackets */
+  .hero::before, .hero::after {
+    content: '';
+    position: absolute;
+    width: 120px; height: 120px;
+    border-color: var(--neon); border-style: solid;
+    animation: pulse 2.5s ease-in-out infinite;
+  }
+  .hero::before { top: 80px; left: 40px; border-width: 3px 0 0 3px; }
+  .hero::after  { bottom: 60px; right: 40px; border-width: 0 3px 3px 0; }
+
+  @keyframes pulse {
+    0%,100% { opacity: 0.5; } 50% { opacity: 1; }
+  }
+
+  .hero-badge {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 0.75rem; letter-spacing: 4px;
+    color: var(--neon2); text-transform: uppercase;
+    border: 1px solid var(--neon2);
+    padding: 5px 14px; margin-bottom: 28px;
+    animation: fadeUp 0.6s ease both;
+  }
+
+  .hero-title {
+    font-family: 'Orbitron', monospace;
+    font-size: clamp(3.5rem, 10vw, 8rem);
+    font-weight: 900; line-height: 0.9;
+    letter-spacing: -2px;
+    animation: fadeUp 0.8s 0.1s ease both;
+  }
+  .hero-title .line1 { display: block; color: #fff; }
+  .hero-title .line2 {
+    display: block;
+    background: linear-gradient(90deg, var(--neon), var(--neon2));
+    -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+    filter: drop-shadow(0 0 20px rgba(0,245,255,0.5));
+  }
+
+  .hero-sub {
+    margin: 24px auto 0; max-width: 540px;
+    font-size: 1.15rem; font-weight: 500; color: var(--muted);
+    letter-spacing: 0.5px; line-height: 1.7;
+    animation: fadeUp 0.8s 0.2s ease both;
+  }
+
+  .hero-actions {
+    display: flex; gap: 16px; margin-top: 44px; flex-wrap: wrap; justify-content: center;
+    animation: fadeUp 0.8s 0.35s ease both;
+  }
+
+  @keyframes fadeUp {
+    from { opacity: 0; transform: translateY(28px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+
+  /* ── BUTTONS ── */
+  .btn-primary {
+    display: inline-flex; align-items: center; gap: 10px;
+    padding: 16px 36px;
+    font-family: 'Orbitron', monospace; font-size: 0.85rem; font-weight: 700;
+    letter-spacing: 2px; text-transform: uppercase; text-decoration: none;
+    color: var(--bg);
+    background: linear-gradient(135deg, var(--neon), #00b8d4);
+    border: none; position: relative; overflow: hidden;
+    clip-path: polygon(8px 0%, 100% 0%, calc(100% - 8px) 100%, 0% 100%);
+    cursor: pointer; transition: transform 0.15s, filter 0.15s;
+    box-shadow: 0 0 30px rgba(0,245,255,0.35), inset 0 1px 0 rgba(255,255,255,0.2);
+  }
+  .btn-primary:hover { transform: translateY(-2px); filter: brightness(1.15); }
+  .btn-primary svg { width: 20px; height: 20px; }
+
+  .btn-outline {
+    display: inline-flex; align-items: center; gap: 10px;
+    padding: 15px 34px;
+    font-family: 'Orbitron', monospace; font-size: 0.85rem; font-weight: 700;
+    letter-spacing: 2px; text-transform: uppercase; text-decoration: none;
+    color: var(--neon);
+    background: transparent;
+    border: 1.5px solid var(--neon);
+    clip-path: polygon(8px 0%, 100% 0%, calc(100% - 8px) 100%, 0% 100%);
+    cursor: pointer; transition: all 0.2s;
+  }
+  .btn-outline:hover { background: rgba(0,245,255,0.08); transform: translateY(-2px); }
+
+  /* Google Play badge */
+  .gplay-badge {
+    display: inline-flex; align-items: center; gap: 12px;
+    padding: 14px 28px;
+    background: #000; border: 1.5px solid #333;
+    border-radius: 4px; text-decoration: none;
+    transition: border-color 0.2s, transform 0.15s;
+  }
+  .gplay-badge:hover { border-color: var(--neon); transform: translateY(-2px); }
+  .gplay-badge .gp-text { display: flex; flex-direction: column; }
+  .gplay-badge .gp-sub { font-size: 0.65rem; color: #aaa; letter-spacing: 1px; }
+  .gplay-badge .gp-main { font-family: 'Orbitron', monospace; font-size: 0.9rem; font-weight: 700; color: #fff; }
+
+  /* ── STATS BAR ── */
+  .stats {
+    position: relative; z-index: 1;
+    display: flex; justify-content: center;
+    gap: 0; flex-wrap: wrap;
+    margin: 0 auto; max-width: 900px;
+    border: 1px solid var(--border);
+    background: var(--card);
+  }
+  .stat {
+    flex: 1; min-width: 160px;
+    padding: 28px 24px; text-align: center;
+    border-right: 1px solid var(--border);
+  }
+  .stat:last-child { border-right: none; }
+  .stat-num {
+    font-family: 'Orbitron', monospace; font-size: 2rem; font-weight: 900;
+    color: var(--neon);
+    text-shadow: 0 0 16px rgba(0,245,255,0.5);
+  }
+  .stat-label { font-size: 0.8rem; letter-spacing: 2px; color: var(--muted); text-transform: uppercase; margin-top: 4px; }
+
+  /* ── SECTIONS ── */
+  section { position: relative; z-index: 1; padding: 90px 20px; }
+
+  .section-tag {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 0.7rem; letter-spacing: 5px; color: var(--neon2);
+    text-transform: uppercase; margin-bottom: 12px;
+  }
+  .section-title {
+    font-family: 'Orbitron', monospace;
+    font-size: clamp(1.6rem, 4vw, 2.6rem); font-weight: 900;
+    letter-spacing: 1px; line-height: 1.1;
+    margin-bottom: 16px;
+  }
+  .section-sub { color: var(--muted); font-size: 1.05rem; line-height: 1.7; max-width: 520px; }
+
+  /* ── FEATURES ── */
+  .features-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+    gap: 2px; margin-top: 60px;
+    max-width: 1100px; margin-left: auto; margin-right: auto;
+  }
+  .feat-card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    padding: 32px 28px;
+    transition: border-color 0.2s, transform 0.2s;
+    position: relative; overflow: hidden;
+  }
+  .feat-card::before {
+    content: '';
+    position: absolute; top: 0; left: 0; right: 0; height: 2px;
+    background: linear-gradient(90deg, transparent, var(--neon), transparent);
+    opacity: 0; transition: opacity 0.3s;
+  }
+  .feat-card:hover { border-color: rgba(0,245,255,0.4); transform: translateY(-4px); }
+  .feat-card:hover::before { opacity: 1; }
+  .feat-icon {
+    font-size: 2rem; margin-bottom: 18px;
+    filter: drop-shadow(0 0 10px var(--neon));
+  }
+  .feat-title {
+    font-family: 'Orbitron', monospace; font-size: 0.95rem; font-weight: 700;
+    letter-spacing: 1.5px; color: #fff; margin-bottom: 10px;
+  }
+  .feat-desc { color: var(--muted); font-size: 0.95rem; line-height: 1.6; }
+
+  /* ── SCREENSHOTS ── */
+  .screens-section { background: var(--bg2); }
+  .screens-wrapper {
+    display: flex; gap: 20px; justify-content: center;
+    flex-wrap: wrap; margin-top: 50px;
+  }
+  .screen-mock {
+    width: 200px; background: #0a0e1a;
+    border: 1px solid var(--border);
+    border-radius: 2px; overflow: hidden;
+    transition: transform 0.3s, box-shadow 0.3s;
+  }
+  .screen-mock:hover {
+    transform: translateY(-8px) scale(1.03);
+    box-shadow: 0 20px 60px rgba(0,245,255,0.15);
+  }
+  .screen-top {
+    height: 12px; background: #111;
+    display: flex; align-items: center; justify-content: center;
+    gap: 4px;
+  }
+  .screen-dot { width: 5px; height: 5px; border-radius: 50%; }
+  .screen-body {
+    padding: 12px;
+    height: 340px;
+    background: linear-gradient(160deg, #0c1220, #060a14);
+    display: flex; flex-direction: column; gap: 8px;
+  }
+  .mock-bar { height: 10px; border-radius: 2px; background: rgba(0,245,255,0.12); }
+  .mock-title { height: 18px; width: 70%; border-radius: 2px; background: rgba(0,245,255,0.25); }
+  .mock-card-sm { height: 50px; border-radius: 2px; background: rgba(255,255,255,0.04); border: 1px solid rgba(0,245,255,0.1); }
+  .mock-pill { height: 24px; width: 60%; border-radius: 2px; background: linear-gradient(90deg,rgba(0,245,255,0.3),rgba(255,0,60,0.2)); }
+
+  /* ── HOW IT WORKS ── */
+  .steps {
+    display: flex; gap: 0; max-width: 900px; margin: 60px auto 0;
+    flex-wrap: wrap;
+  }
+  .step {
+    flex: 1; min-width: 200px;
+    padding: 36px 28px;
+    background: var(--card); border: 1px solid var(--border);
+    position: relative; text-align: center;
+  }
+  .step:not(:last-child)::after {
+    content: '▶';
+    position: absolute; right: -14px; top: 50%; transform: translateY(-50%);
+    color: var(--neon); font-size: 0.85rem; z-index: 2;
+  }
+  .step-num {
+    font-family: 'Orbitron', monospace; font-size: 2.5rem; font-weight: 900;
+    color: transparent; -webkit-text-stroke: 1.5px var(--neon);
+    line-height: 1; margin-bottom: 14px;
+    opacity: 0.6;
+  }
+  .step-title { font-family: 'Orbitron', monospace; font-size: 0.85rem; font-weight: 700; color: #fff; letter-spacing: 1px; margin-bottom: 8px; }
+  .step-desc { color: var(--muted); font-size: 0.9rem; line-height: 1.6; }
+
+  /* ── DOWNLOAD CTA ── */
+  .cta-section {
+    text-align: center;
+    background: linear-gradient(160deg, #04060d 0%, #080c18 50%, #04060d 100%);
+  }
+  .cta-section .section-title span {
+    background: linear-gradient(90deg, var(--neon), var(--neon2));
+    -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+  }
+  .cta-glow {
+    position: absolute; top: 50%; left: 50%;
+    transform: translate(-50%, -50%);
+    width: 600px; height: 300px;
+    background: radial-gradient(ellipse, rgba(0,245,255,0.06) 0%, transparent 70%);
+    pointer-events: none;
+  }
+  .version-tag {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 0.75rem; color: var(--muted); letter-spacing: 2px;
+    margin-top: 20px;
+  }
+
+  /* ── LEGAL TABS ── */
+  .legal-section { background: var(--bg2); }
+  .legal-tabs {
+    display: flex; gap: 0; margin-bottom: 0;
+    border-bottom: 1px solid var(--border);
+    max-width: 900px; margin-left: auto; margin-right: auto;
+    overflow-x: auto;
+  }
+  .tab-btn {
+    padding: 14px 28px;
+    font-family: 'Orbitron', monospace; font-size: 0.7rem; font-weight: 700;
+    letter-spacing: 2px; text-transform: uppercase;
+    color: var(--muted); background: transparent;
+    border: none; border-bottom: 2px solid transparent;
+    cursor: pointer; transition: all 0.2s; white-space: nowrap;
+  }
+  .tab-btn.active { color: var(--neon); border-bottom-color: var(--neon); }
+  .tab-btn:hover { color: var(--text); }
+
+  .legal-content {
+    max-width: 900px; margin: 0 auto;
+    background: var(--card); border: 1px solid var(--border);
+    border-top: none; padding: 40px;
+    display: none;
+  }
+  .legal-content.active { display: block; }
+  .legal-content h3 {
+    font-family: 'Orbitron', monospace; font-size: 1rem; font-weight: 700;
+    color: var(--neon); letter-spacing: 1px; margin: 28px 0 10px;
+  }
+  .legal-content h3:first-child { margin-top: 0; }
+  .legal-content p, .legal-content li {
+    color: #7a8fac; font-size: 0.93rem; line-height: 1.75;
+    margin-bottom: 10px;
+  }
+  .legal-content ul { padding-left: 20px; }
+  .legal-content li { margin-bottom: 6px; }
+  .legal-date {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 0.7rem; color: var(--muted); letter-spacing: 2px;
+    margin-bottom: 28px;
+  }
+
+  /* ── FOOTER ── */
+  footer {
+    position: relative; z-index: 1;
+    border-top: 1px solid var(--border);
+    padding: 40px 20px;
+    text-align: center;
+  }
+  .footer-logo {
+    font-family: 'Orbitron', monospace; font-weight: 900; font-size: 1.4rem;
+    color: var(--neon); letter-spacing: 4px;
+    text-shadow: 0 0 18px rgba(0,245,255,0.4);
+    margin-bottom: 14px;
+  }
+  .footer-logo span { color: var(--neon2); }
+  .footer-links { display: flex; gap: 24px; justify-content: center; flex-wrap: wrap; margin-bottom: 20px; }
+  .footer-links a { color: var(--muted); font-size: 0.8rem; letter-spacing: 1.5px; text-decoration: none; text-transform: uppercase; transition: color 0.2s; }
+  .footer-links a:hover { color: var(--neon); }
+  .footer-copy { font-family: 'Share Tech Mono', monospace; font-size: 0.7rem; color: var(--muted); letter-spacing: 1px; }
+
+  /* responsive */
+  @media (max-width: 600px) {
+    nav { padding: 14px 20px; }
+    .nav-links { display: none; }
+    .hero::before, .hero::after { display: none; }
+    .step::after { display: none; }
+    .legal-content { padding: 24px 18px; }
+  }
+</style>
+</head>
+<body>
+
+<div class="grid-bg"></div>
+
+<!-- NAV -->
+<nav>
+  <div class="nav-logo">BATTLE<span>ZONE</span></div>
+  <ul class="nav-links">
+    <li><a href="#features">Features</a></li>
+    <li><a href="#how">How It Works</a></li>
+    <li><a href="#download">Download</a></li>
+    <li><a href="#legal">Legal</a></li>
+  </ul>
+</nav>
+
+<!-- HERO -->
+<section class="hero">
+  <div class="hero-badge">⚡ Esports Tournament Platform</div>
+  <h1 class="hero-title">
+    <span class="line1">BATTLE</span>
+    <span class="line2">ZONE</span>
+  </h1>
+  <p class="hero-sub">Dominate every bracket. Organize, compete, and track real-time tournaments — built for gamers, by gamers.</p>
+
+  <div class="hero-actions">
+    <a href="https://www.mediafire.com/file/lzcuv1j80ywbtju/Battle+Zone_1.0.apk/file" class="btn-primary" target="_blank">
+      <svg viewBox="0 0 24 24" fill="currentColor"><path d="M17.523 15.341a.98.98 0 0 1-.66-.254l-1.158-1.055a5.834 5.834 0 0 1-3.551.968 5.891 5.891 0 0 1-3.55-.968L7.445 15.08a.982.982 0 0 1-1.331-.044.93.93 0 0 1-.043-1.292l1.02-.929a5.34 5.34 0 0 1-.876-2.93C6.215 7.02 8.938 4.4 12.154 4.4c3.217 0 5.939 2.621 5.939 5.485a5.34 5.34 0 0 1-.875 2.93l1.02.929a.93.93 0 0 1-.044 1.292.98.98 0 0 1-.671.305zM9.6 2.1 8.5.4M14.4 2.1 15.5.4M9.5 11.4a.9.9 0 1 0 0-1.8.9.9 0 0 0 0 1.8zm5 0a.9.9 0 1 0 0-1.8.9.9 0 0 0 0 1.8z"/></svg>
+      Download for Android
+    </a>
+    <a href="#features" class="btn-outline">Explore Features</a>
+  </div>
+</section>
+
+<!-- STATS -->
+<div class="stats">
+  <div class="stat"><div class="stat-num">50K+</div><div class="stat-label">Players Registered</div></div>
+  <div class="stat"><div class="stat-num">12K+</div><div class="stat-label">Tournaments Held</div></div>
+  <div class="stat"><div class="stat-num">200+</div><div class="stat-label">Games Supported</div></div>
+  <div class="stat"><div class="stat-num">4.8★</div><div class="stat-label">Average Rating</div></div>
+</div>
+
+<!-- FEATURES -->
+<section id="features" style="padding-top:100px;">
+  <div style="text-align:center; max-width:700px; margin:0 auto;">
+    <div class="section-tag">// Core Systems</div>
+    <h2 class="section-title">Built to Win.<br>Designed to Dominate.</h2>
+    <p class="section-sub" style="margin:0 auto;">Every feature engineered for competitive gaming — from casual brackets to full-scale esports events.</p>
+  </div>
+
+  <div class="features-grid" style="margin-top:50px;">
+    <div class="feat-card">
+      <div class="feat-icon">🏆</div>
+      <div class="feat-title">Bracket Engine</div>
+      <div class="feat-desc">Single elimination, double elimination, round-robin, Swiss — support for every bracket format with real-time auto-seeding.</div>
+    </div>
+    <div class="feat-card">
+      <div class="feat-icon">⚡</div>
+      <div class="feat-title">Live Score Tracking</div>
+      <div class="feat-desc">Real-time score updates pushed instantly to all participants. No refresh needed — your bracket updates live.</div>
+    </div>
+    <div class="feat-card">
+      <div class="feat-icon">🎮</div>
+      <div class="feat-title">Multi-Game Support</div>
+      <div class="feat-desc">Works with any game or sport — BGMI, Free Fire, Valorant, FIFA, and beyond. You name it, we run it.</div>
+    </div>
+    <div class="feat-card">
+      <div class="feat-icon">📊</div>
+      <div class="feat-title">Player Statistics</div>
+      <div class="feat-desc">Detailed match history, win rates, performance graphs, and leaderboards to track your competitive journey.</div>
+    </div>
+    <div class="feat-card">
+      <div class="feat-icon">🔔</div>
+      <div class="feat-title">Instant Notifications</div>
+      <div class="feat-desc">Match reminders, result alerts, and bracket updates pushed directly to your device. Never miss a match.</div>
+    </div>
+    <div class="feat-card">
+      <div class="feat-icon">🛡️</div>
+      <div class="feat-title">Anti-Cheat & Fair Play</div>
+      <div class="feat-desc">Built-in dispute resolution system and result verification to keep every tournament clean and fair.</div>
+    </div>
+  </div>
+</section>
+
+
+
+<!-- HOW IT WORKS -->
+<section id="how">
+  <div style="text-align:center; max-width:700px; margin:0 auto;">
+    <div class="section-tag">// Protocol</div>
+    <h2 class="section-title">From Zero to Champion.</h2>
+  </div>
+  <div class="steps">
+    <div class="step">
+      <div class="step-num">01</div>
+      <div class="step-title">Install</div>
+      <div class="step-desc">Download Battle Zone on Android and create your free account in under a minute.</div>
+    </div>
+    <div class="step">
+      <div class="step-num">02</div>
+      <div class="step-title">Join or Create</div>
+      <div class="step-desc">Browse open tournaments or host your own with custom rules, format, and prizes.</div>
+    </div>
+    <div class="step">
+      <div class="step-num">03</div>
+      <div class="step-title">Compete</div>
+      <div class="step-desc">Play your matches, submit results, and watch your live bracket update instantly.</div>
+    </div>
+    <div class="step">
+      <div class="step-num">04</div>
+      <div class="step-title">Dominate</div>
+      <div class="step-desc">Climb the leaderboards, earn trophies, and build your champion profile.</div>
+    </div>
+  </div>
+</section>
+
+<!-- DOWNLOAD CTA -->
+<section class="cta-section" id="download">
+  <div class="cta-glow"></div>
+  <div class="section-tag" style="text-align:center;">// Deploy Now</div>
+  <h2 class="section-title" style="text-align:center;"><span>Enter the Battle Zone.</span></h2>
+  <p style="color:var(--muted); font-size:1.05rem; max-width:480px; margin:0 auto 36px; line-height:1.7; text-align:center;">Download free. No subscriptions. No paywalls. Just pure competitive tournament experience.</p>
+
+  <div style="display:flex; justify-content:center; gap:20px; flex-wrap:wrap;">
+    <a href="https://www.mediafire.com/file/lzcuv1j80ywbtju/Battle+Zone_1.0.apk/file" class="btn-primary" style="font-size:0.9rem; padding:18px 42px;" target="_blank">
+      <svg viewBox="0 0 24 24" fill="currentColor" width="22" height="22"><path d="M17.523 15.341a.98.98 0 0 1-.66-.254l-1.158-1.055a5.834 5.834 0 0 1-3.551.968 5.891 5.891 0 0 1-3.55-.968L7.45 15.08a.982.982 0 0 1-1.331-.044.93.93 0 0 1-.043-1.292l1.02-.929a5.34 5.34 0 0 1-.876-2.93C6.215 7.02 8.938 4.4 12.154 4.4c3.217 0 5.939 2.621 5.939 5.485a5.34 5.34 0 0 1-.875 2.93l1.02.929a.93.93 0 0 1-.044 1.292.98.98 0 0 1-.671.305zM9.5 11.4a.9.9 0 1 0 0-1.8.9.9 0 0 0 0 1.8zm5 0a.9.9 0 1 0 0-1.8.9.9 0 0 0 0 1.8z"/></svg>
+      Download APK — Free
+    </a>
+  </div>
+  <div class="version-tag" style="text-align:center; margin-top:20px;">// VERSION 1.0 · ANDROID 6.0+ · 25 MB</div>
+</section>
+
+<!-- LEGAL SECTION -->
+<section class="legal-section" id="legal">
+  <div style="text-align:center; max-width:700px; margin:0 auto 40px;">
+    <div class="section-tag">// Legal Documents</div>
+    <h2 class="section-title">Policies & Terms</h2>
+  </div>
+
+  <div class="legal-tabs" id="legalTabs">
+    <button class="tab-btn active" onclick="showTab('privacy')">Privacy Policy</button>
+    <button class="tab-btn" onclick="showTab('terms')">Terms & Conditions</button>
+    <button class="tab-btn" onclick="showTab('disclaimer')">Disclaimer</button>
+  </div>
+
+  <!-- PRIVACY POLICY -->
+  <div class="legal-content active" id="privacy">
+    <div class="legal-date">// LAST UPDATED: MARCH 2025</div>
+    <p>Battle Zone ("we", "our", or "the App") is committed to protecting your privacy. This Privacy Policy explains how we collect, use, and safeguard your information when you use our mobile application.</p>
+
+    <h3>1. Information We Collect</h3>
+    <ul>
+      <li><strong>Account Data:</strong> Username, email address, and profile information you provide during registration.</li>
+      <li><strong>Tournament Data:</strong> Match results, scores, tournament history, and bracket participation.</li>
+      <li><strong>Device Information:</strong> Device model, OS version, and unique device identifiers for app functionality.</li>
+      <li><strong>Usage Data:</strong> In-app interactions, features used, and session duration for improving the experience.</li>
+    </ul>
+
+    <h3>2. How We Use Your Information</h3>
+    <ul>
+      <li>To operate and manage tournaments, brackets, and leaderboards.</li>
+      <li>To send match notifications, results, and tournament updates.</li>
+      <li>To improve app performance, fix bugs, and develop new features.</li>
+      <li>To prevent fraud, cheating, and abuse of the platform.</li>
+    </ul>
+
+    <h3>3. Data Sharing</h3>
+    <p>We do not sell, rent, or trade your personal data. Your username and tournament results may be visible to other players as part of public leaderboards and brackets. We may share data with service providers strictly for app operations (e.g., hosting, analytics).</p>
+
+    <h3>4. Data Retention</h3>
+    <p>We retain your data for as long as your account is active. You may request deletion of your account and associated data by contacting us.</p>
+
+    <h3>5. Security</h3>
+    <p>We implement industry-standard encryption and security practices. However, no digital transmission is 100% secure. Use Battle Zone at your own risk.</p>
+
+    <h3>6. Children's Privacy</h3>
+    <p>Battle Zone is not intended for users under the age of 13. We do not knowingly collect data from minors. If you believe a minor has registered, contact us immediately.</p>
+
+    <h3>7. Contact</h3>
+    <p>For privacy-related questions, contact us at: <strong style="color:var(--neon);"><a href="mailto:gamerabhi813@gmail.com" style="color:var(--neon);">gamerabhi813@gmail.com</a></strong></p>
+  </div>
+
+  <!-- TERMS & CONDITIONS -->
+  <div class="legal-content" id="terms">
+    <div class="legal-date">// LAST UPDATED: MARCH 2025</div>
+    <p>By downloading or using Battle Zone, you agree to be bound by the following Terms and Conditions. If you do not agree, do not use the app.</p>
+
+    <h3>1. Eligibility</h3>
+    <p>You must be at least 13 years of age to use Battle Zone. By creating an account, you confirm you meet this age requirement.</p>
+
+    <h3>2. Account Responsibility</h3>
+    <ul>
+      <li>You are responsible for maintaining the confidentiality of your account credentials.</li>
+      <li>You are liable for all activity that occurs under your account.</li>
+      <li>Do not share accounts or impersonate other users.</li>
+    </ul>
+
+    <h3>3. Tournament Rules</h3>
+    <ul>
+      <li>All match results must be submitted honestly and in a timely manner.</li>
+      <li>Cheating, exploiting bugs, or manipulating results will result in immediate disqualification and account ban.</li>
+      <li>Tournament organizers may set additional rules; players are required to follow them.</li>
+      <li>Disputes must be raised within 30 minutes of match completion.</li>
+    </ul>
+
+    <h3>4. Prohibited Conduct</h3>
+    <p>You may not: harass or abuse other players, attempt to hack or disrupt the app, create multiple accounts to manipulate rankings, or use automated bots or scripts in any way.</p>
+
+    <h3>5. Prizes & Rewards</h3>
+    <p>Any prizes offered through tournaments are the responsibility of the individual tournament organizer. Battle Zone is not liable for prizes offered by third-party organizers unless explicitly stated.</p>
+
+    <h3>6. Intellectual Property</h3>
+    <p>All content within Battle Zone, including graphics, logo, and brand assets, is the intellectual property of Battle Zone and may not be reproduced without permission.</p>
+
+    <h3>7. Termination</h3>
+    <p>We reserve the right to suspend or permanently ban any account that violates these terms without prior notice.</p>
+
+    <h3>8. Modifications</h3>
+    <p>We reserve the right to modify these terms at any time. Continued use of the app after changes constitutes acceptance.</p>
+  </div>
+
+  <!-- DISCLAIMER -->
+  <div class="legal-content" id="disclaimer">
+    <div class="legal-date">// LAST UPDATED: MARCH 2025</div>
+
+    <h3>1. General Disclaimer</h3>
+    <p>Battle Zone is provided "as is" without any warranties of any kind, either expressed or implied. We do not guarantee that the app will be error-free, uninterrupted, or free from technical issues.</p>
+
+    <h3>2. Tournament Outcomes</h3>
+    <p>Battle Zone facilitates tournament organization and bracket management but is not responsible for the outcome of any match, dispute between players, or decisions made by tournament organizers.</p>
+
+    <h3>3. Third-Party Games</h3>
+    <p>Battle Zone is an independent tournament platform. We are not affiliated with, endorsed by, or officially connected to any game developer, publisher, or esports organization unless explicitly stated.</p>
+
+    <h3>4. Connectivity</h3>
+    <p>Real-time features require a stable internet connection. Battle Zone is not responsible for missed matches, lost results, or tournament disruptions caused by poor connectivity on the user's end.</p>
+
+    <h3>5. Prizes & Monetary Transactions</h3>
+    <p>Battle Zone does not handle prize money by default. Any monetary prizes in tournaments organized by third parties are solely the responsibility of those organizers. Battle Zone holds no liability for unpaid, disputed, or contested prizes.</p>
+
+    <h3>6. Limitation of Liability</h3>
+    <p>To the fullest extent permitted by law, Battle Zone and its developers shall not be liable for any indirect, incidental, special, or consequential damages arising from the use or inability to use the app.</p>
+
+    <h3>7. Fair Play</h3>
+    <p>While we employ measures to ensure fair play, Battle Zone cannot guarantee a 100% cheat-free environment. We are not responsible for losses resulting from cheating by other players, though we take all reports seriously.</p>
+  </div>
+</section>
+
+<!-- FOOTER -->
+<footer>
+  <div class="footer-logo">BATTLE<span>ZONE</span></div>
+  <div class="footer-links">
+    <a href="#features">Features</a>
+    <a href="#download">Download</a>
+    <a href="#legal" onclick="showTab('privacy')">Privacy</a>
+    <a href="#legal" onclick="showTab('terms')">Terms</a>
+    <a href="#legal" onclick="showTab('disclaimer')">Disclaimer</a>
+    <a href="mailto:gamerabhi813@gmail.com">Support</a>
+  </div>
+  <div class="footer-copy">© 2025 BATTLE ZONE · ALL RIGHTS RESERVED · ENTER THE ARENA</div>
+</footer>
+
+<script data-cfasync="false" src="/cdn-cgi/scripts/5c5dd728/cloudflare-static/email-decode.min.js"></script><script>
+  function showTab(id) {
+    document.querySelectorAll('.legal-content').forEach(el => el.classList.remove('active'));
+    document.querySelectorAll('.tab-btn').forEach(el => el.classList.remove('active'));
+    document.getElementById(id).classList.add('active');
+    const tabs = {'privacy':0,'terms':1,'disclaimer':2};
+    document.querySelectorAll('.tab-btn')[tabs[id]].classList.add('active');
+    document.getElementById('legal').scrollIntoView({behavior:'smooth'});
+  }
+
+  // Animate stats on scroll
+  const observer = new IntersectionObserver((entries) => {
+    entries.forEach(e => {
+      if (e.isIntersecting) e.target.style.opacity = '1';
